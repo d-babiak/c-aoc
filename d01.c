@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dmb/tree.h"
+
 bool is_space(char c) {
   return c == 32 || c == 10;
 }
@@ -32,6 +34,31 @@ void read_input(int xs[], size_t N) {
     xs[i] = atoi(fgets(s, sizeof s, fp));
 }
 
+int increment(Map **m, int k) {
+  int *n = M_get(*m, k);
+
+  if (NULL == n) {
+    M_set(m, k, 1);
+    return 1;
+  } else {
+    return *n += 1; // hmm...
+  }
+}
+
+int d1_p2(int xs[], size_t N) {
+  Map *m = NULL;
+  int freq = 0;
+  for (;;) {
+    for (int i = 0; i < N; i++) {
+      freq += xs[i];
+      int n = increment(&m, freq);
+      //printf("freq: %d, count: %d\n", freq, n);
+      if (n > 1)
+        return freq;
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
   // ./d1_p01 $(wc -l ./inputs/d01.text) # lol
   int N = atoi(argv[1]);
@@ -39,7 +66,6 @@ int main(int argc, char *argv[]) {
 
   read_input(xs, N);
 
-  int d1_p1 = sum(xs, N);
-
-  printf("part 1: %d\n", d1_p1);
+  printf("part 1: %d\n",   sum(xs, N));
+  printf("part 2: %d\n", d1_p2(xs, N));
 }
