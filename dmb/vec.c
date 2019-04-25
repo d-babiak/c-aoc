@@ -34,7 +34,7 @@ char *V_pop(Vec *v) {
 
 void _grow(Vec *v) {
   size_t new_max = 2 * v->max;
-  printf("%zd -> %zd\n", v->max, new_max);
+  //printf("%zd -> %zd\n", v->max, new_max);
   char **new_xs = malloc(new_max * sizeof(char *));
 
   for (int i = 0; i < v->max; i++)
@@ -47,7 +47,7 @@ void _grow(Vec *v) {
 
 void _shrink(Vec *v) {
   size_t new_max = v->max / 2;
-  printf("%zd -> %zd\n", v->max, new_max);
+  //printf("%zd -> %zd\n", v->max, new_max);
   char **new_xs = malloc(new_max * sizeof(char *));
 
   for (int i = 0; i < v->max; i++)
