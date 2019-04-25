@@ -161,8 +161,8 @@ bool claims_overlap(Claim *c1, Claim *c2) {
 }
 
 bool all_disjoint(Claim *claim, Claim claims[], size_t N) {
-  for (int j = claim->id + 1; j < N; j++)
-    if (claims_overlap(claim, &claims[j]))
+  for (int j = 0; j < N; j++)
+    if (claims_overlap(claim, &claims[j]) && claim->id != claims[j].id)
       return false;
 
   return true;
