@@ -18,4 +18,8 @@ void _grow(Vec *v);
 
 void _shrink(Vec *v);
 
+char *V_get(Vec *v, int i);
+
+void V_each(Vec *v, void(*f)(char *));
+
 #endif

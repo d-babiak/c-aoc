@@ -64,3 +64,15 @@ vec_test(20763,0x10772a5c0) malloc: *** set a breakpoint in malloc_error_break t
   v->max = new_max;
   v->xs = new_xs;
 }
+
+char *V_get(Vec *v, int i) {
+  assert(0 <= i && i < v->n);
+  return v->xs[i];
+}
+
+void V_each(Vec *v, void (*f)(char *)) {
+  for (int i = 0; i < v->n; i++) {
+    f(v->xs[i]);
+  }
+}
+
