@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -50,6 +51,7 @@ Claim parse_claim(char *s) {
   };
   return claim;
 }
+
 
 // ssize_t...?
 size_t parse_claims(char *pathname, Claim claims[], size_t n) {
@@ -137,6 +139,83 @@ uint32_t d3_p1(uint32_t max_row, uint32_t max_col, uint32_t grid[max_row][max_co
   return n_conflicts;
 }
 
+void find_conflict_free(
+  uint32_t *R, uint32_t *C, 
+  uint32_t nrow, uint32_t ncol, uint32_t grid[nrow][ncol]
+) {
+  for (uint32_t row = 0; row < nrow; row++)
+    for (uint32_t col = 0; col < ncol; col++)
+      if (grid[row][col] == 1) {
+        *R = row;
+        *C = col;
+        return;
+      }
+}
+
+bool col_intersects(Claim *c1, Claim *c2) {
+  return (c1->col <= c2->col && c2->col < right(c1))
+      || (c2->col <= c1->col && c1->col < right(c2));
+}
+
+bool row_intersects(Claim *c1, Claim *c2) {
+  return (c1->row <= c2->row && c2->row < bottom(c1))
+      || (c2->row <= c1->row && c1->row < bottom(c2));
+}
+
+bool intersects(Claim *c1, Claim *c2) {
+  return col_intersects(c1, c2) && row_intersects(c1, c2);
+}
+
+bool disjoint(Claim *c1, Claim *c2) {
+  if (c1->claim_id == 894 && c2->claim_id == 901) {
+    print_claim(c1);
+    print_claim(c2);
+    printf(".......\n");
+  }
+  return !intersects(c1, c2);
+}
+
+bool all_disjoint(Claim *claim, Claim claims[], size_t N) {
+  for (int i = claim->claim_id + 1; i < N; i++)
+    if (intersects(claim, &claims[i]))
+      return false;
+  return true;
+}
+
+Claim d3_p2(Claim claims[], size_t N) {
+  for (int i = 0; i < N - 1; i++)
+    if (all_disjoint(&claims[i], claims, N))
+      return claims[i];
+
+  assert(false);
+}
+
+/*
+int main() {
+  Claim c1 = {
+    .claim_id = 1,
+    .col = 0,
+    .row = 0,
+    .width = 4,
+    .height = 4
+  };
+
+  Claim c2 = {
+    .claim_id = 1,
+    .col = 3,
+    .row = 3,
+    .width = 1,
+    .height = 1
+  };
+
+  printf("rows? %d\n", row_intersects(&c1, &c2));
+  printf("cols? %d\n", col_intersects(&c1, &c2));
+  printf("both? %d\n", intersects(&c1, &c2));
+  printf("disjoint%d\n", disjoint(&c1, &c2));
+
+}
+*/
+
 int main(int argc, char *argv[]) {
   assert(argc == 2);
   char *pathname = argv[1];
@@ -163,4 +242,7 @@ int main(int argc, char *argv[]) {
 
   uint32_t n_conflicts = d3_p1(max_row, max_col, grid);
   printf("part 1: %d\n", n_conflicts);
+
+  Claim conflict_free = d3_p2(claims, N);
+  printf("part 2: %d\n", conflict_free.claim_id);
 }
