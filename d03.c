@@ -7,29 +7,31 @@
 #include <unistd.h>
 
 // Brian Kernighan disapproves 
-#define min(x,y) (x <= y ? x : y)
 #define max(x,y) (x >= y ? x : y)
 
 // hmm...
 // what storage allocation?
 const char s[] = "#1 @ 1,3: 4x4";
 
+typedef struct Interval {
+  uint32_t lo;
+  uint32_t hi;
+} Interval;
+
 typedef struct Claim {
-  uint32_t claim_id;
-  uint32_t col;
-  uint32_t row;
-  uint32_t width;
-  uint32_t height;
+  uint32_t id;
+  Interval rows;
+  Interval cols;
 } Claim;
 
 void print_claim(Claim *claim) {
   printf(
-    "id: %d, col: %d, row: %d, w: %d, h: %d\n",
-    claim->claim_id,
-    claim->col,
-    claim->row,
-    claim->width,
-    claim->height
+    "id: %d, cl: %d, ch: %d, rl: %d, rh: %d\n",
+    claim->id,
+    claim->cols.lo,
+    claim->cols.hi,
+    claim->rows.lo,
+    claim->rows.hi
   );
 }
 
@@ -43,11 +45,9 @@ Claim parse_claim(char *s) {
   );
 
   Claim claim = {
-    .claim_id = id,
-    .col = c,
-    .row = r,
-    .width = w,
-    .height = h
+    .id = id,
+    .cols = { .lo = c, .hi = c + w - 1 },
+    .rows = { .lo = r, .hi = r + h - 1 }
   };
   return claim;
 }
@@ -85,43 +85,34 @@ size_t line_count(char *pathname) {
   return n_lines;
 }
 
-// exclusive ...?
-uint32_t right(Claim *claim) {
-  return claim->col + claim->width;
-}
-
-uint32_t bottom(Claim *claim) {
-  return claim->row + claim->height;
-}
-
 uint32_t get_max_col(Claim claims[], size_t n) {
-  uint32_t acc = right(&claims[0]);
+  uint32_t acc = claims[0].cols.hi;
 
   for (int i = 1; i < n; i++)
-    acc = max(acc, right(&claims[i]));
+    acc = max(acc, claims[i].cols.lo);
 
-  return acc;
+  return acc + 1;
 }
 
 uint32_t get_max_row(Claim claims[], size_t n) {
-  uint32_t acc = bottom(&claims[0]);
+  uint32_t acc = claims[0].rows.hi;
 
   for (int i = 1; i < n; i++)
-    acc = max(acc, bottom(&claims[i]));
+    acc = max(acc, claims[i].rows.hi);
 
-  return acc;
+  return acc + 1;
 }
 
-void place_claim(Claim *claim, uint32_t max_row, uint32_t max_col, uint32_t grid[max_row][max_col]) {
-  for (uint32_t row = claim->row; row < bottom(claim); row++)
-    for (uint32_t col = claim->col; col < right(claim); col++) {
-      //printf("row: %d, col: %d\n", row, col);
-      grid[row][col] = grid[row][col] + 1;
-    }
+void place_claim(
+  Claim *claim, 
+  uint32_t max_row, uint32_t max_col, uint32_t grid[max_row][max_col]
+) {
+  for (uint32_t r = claim->rows.lo; r <= claim->rows.hi; r++)
+    for (uint32_t c = claim->cols.lo; c <= claim->cols.hi; c++)
+      grid[r][c]++;
 }
 
 /*
-
 "From C99, C language supports variable sized arrays to be passed simply by specifying the variable dimensions 
 
 (dimensions must be passed before the array)
@@ -152,33 +143,28 @@ void find_conflict_free(
       }
 }
 
-bool col_intersects(Claim *c1, Claim *c2) {
-  return (c1->col <= c2->col && c2->col < right(c1))
-      || (c2->col <= c1->col && c1->col < right(c2));
+bool I_contains(Interval *I, int x) {
+  return I->lo <= x && x <= I->hi;
 }
 
-bool row_intersects(Claim *c1, Claim *c2) {
-  return (c1->row <= c2->row && c2->row < bottom(c1))
-      || (c2->row <= c1->row && c1->row < bottom(c2));
+bool I_intersects(Interval *ab, Interval *cd) {
+  return I_contains(ab, cd->lo) 
+      || I_contains(ab, cd->hi)
+      || I_contains(cd, ab->lo)
+      || I_contains(cd, ab->hi);
 }
 
-bool intersects(Claim *c1, Claim *c2) {
-  return col_intersects(c1, c2) && row_intersects(c1, c2);
-}
 
-bool disjoint(Claim *c1, Claim *c2) {
-  if (c1->claim_id == 894 && c2->claim_id == 901) {
-    print_claim(c1);
-    print_claim(c2);
-    printf(".......\n");
-  }
-  return !intersects(c1, c2);
+bool claims_overlap(Claim *c1, Claim *c2) {
+  return I_intersects(&c1->rows, &c2->rows) 
+      && I_intersects(&c1->cols, &c2->cols);
 }
 
 bool all_disjoint(Claim *claim, Claim claims[], size_t N) {
-  for (int i = claim->claim_id + 1; i < N; i++)
-    if (intersects(claim, &claims[i]))
+  for (int j = claim->id + 1; j < N; j++)
+    if (claims_overlap(claim, &claims[j]))
       return false;
+
   return true;
 }
 
@@ -186,35 +172,8 @@ Claim d3_p2(Claim claims[], size_t N) {
   for (int i = 0; i < N - 1; i++)
     if (all_disjoint(&claims[i], claims, N))
       return claims[i];
-
   assert(false);
 }
-
-/*
-int main() {
-  Claim c1 = {
-    .claim_id = 1,
-    .col = 0,
-    .row = 0,
-    .width = 4,
-    .height = 4
-  };
-
-  Claim c2 = {
-    .claim_id = 1,
-    .col = 3,
-    .row = 3,
-    .width = 1,
-    .height = 1
-  };
-
-  printf("rows? %d\n", row_intersects(&c1, &c2));
-  printf("cols? %d\n", col_intersects(&c1, &c2));
-  printf("both? %d\n", intersects(&c1, &c2));
-  printf("disjoint%d\n", disjoint(&c1, &c2));
-
-}
-*/
 
 int main(int argc, char *argv[]) {
   assert(argc == 2);
@@ -224,11 +183,9 @@ int main(int argc, char *argv[]) {
   memset(claims, 0, sizeof claims);
   parse_claims(pathname, claims, N);
 
-  //for (int i = 0; i < N; i++)
-  //  print_claim(&claims[i]);
-
-  uint32_t max_row = get_max_row(claims, N);
-  uint32_t max_col = get_max_col(claims, N);
+  // ffs
+  uint32_t max_row = 1000; // get_max_row(claims, N);
+  uint32_t max_col = 1000; // get_max_col(claims, N);
 
   printf("max_col: %d, max_row: %d\n", max_col, max_row);
   uint32_t grid[max_row][max_col];
@@ -244,5 +201,5 @@ int main(int argc, char *argv[]) {
   printf("part 1: %d\n", n_conflicts);
 
   Claim conflict_free = d3_p2(claims, N);
-  printf("part 2: %d\n", conflict_free.claim_id);
+  printf("part2: %d\n", conflict_free.id);
 }
